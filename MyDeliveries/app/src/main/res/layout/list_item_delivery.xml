@@ -5,8 +5,10 @@
     android:id="@+id/card_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    card_view:cardCornerRadius="4dp">
+    android:layout_marginTop="8dp"
+    android:layout_marginRight="8dp"
+    android:layout_marginLeft="8dp"
+    card_view:cardCornerRadius="2dp">
         <LinearLayout
             android:id="@+id/delivery_layout"
             android:layout_width="match_parent"
@@ -15,13 +17,17 @@
                 <RelativeLayout
                     android:layout_width="0dp"
                     android:layout_weight="1"
+                    android:paddingRight="16dp"
                     android:paddingLeft="16dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
                     android:layout_height="match_parent">
-                <ImageView
-                    android:id="@+id/delivery_image"
-                    android:layout_centerVertical="true"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"/>
+                        <ImageView
+                            android:id="@+id/delivery_image"
+                            android:layout_centerVertical="true"
+                            android:contentDescription="@string/delivery_image_text"
+                            android:layout_width="100dp"
+                            android:layout_height="100dp"/>
                 </RelativeLayout>
 
                 <TextView

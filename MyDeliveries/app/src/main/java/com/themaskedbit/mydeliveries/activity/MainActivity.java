@@ -3,6 +3,8 @@ package com.themaskedbit.mydeliveries.activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.design.widget.Snackbar;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
@@ -14,21 +16,16 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.AbsListView;
-import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.themaskedbit.mydeliveries.R;
 import com.themaskedbit.mydeliveries.adpater.DeliveryAdapter;
 import com.themaskedbit.mydeliveries.model.Delivery;
-import com.themaskedbit.mydeliveries.model.DeliveryLocation;
 import com.themaskedbit.mydeliveries.rest.DeliveryApiService;
-
-import junit.framework.TestCase;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -44,9 +41,9 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
-
+    //base url of API
+    public static final String BASE_URL = "http://986d59c0.ngrok.io";
     private static final String TAG = MainActivity.class.getSimpleName();
-    public static final String BASE_URL = "http://8c204764.ngrok.io";
     private static Retrofit retrofit = null;
     private RecyclerView recyclerView = null;
     private TextView deliveryMessage = null;
@@ -54,7 +51,6 @@ public class MainActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeContainer;
     private LinearLayoutManager layoutManager;
     private ProgressBar progressBar;
-    private Button refreshButton = null;
     private RelativeLayout emptyVIew = null;
     private Context context = null;
     private DeliveryAdapter deliveryAdapter = null;
@@ -63,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     private int currentItem = 0;
     private int totalItem = 0;
     private int scrollOutItem = 0;
+    private int limit =20;
+    private int refresh = 0;
 
     private final String dataKey = "objKey";
     private final String dateKey = "dateKey";
@@ -83,12 +81,11 @@ public class MainActivity extends AppCompatActivity {
         ab.setDisplayShowTitleEnabled(false);
         totalDeliveries = new ArrayList<Delivery>();
         shref = this.getSharedPreferences(preferenceFile, Context.MODE_PRIVATE);
-        editor = shref.edit();
 
         recyclerView = (RecyclerView)findViewById(R.id.recycler_view);
         swipeContainer = (SwipeRefreshLayout) findViewById(R.id.swiperefresh);
         deliveryMessage = (TextView) findViewById(R.id.delivery_message);
-        refreshButton = (Button)findViewById(R.id.refresh_button);
+
         emptyVIew = (RelativeLayout)findViewById(R.id.empty_view);
         progressBar = (ProgressBar)findViewById(R.id.progress);
         recyclerView.setHasFixedSize(true);
@@ -98,9 +95,6 @@ public class MainActivity extends AppCompatActivity {
         DeliveryAdapter.DeliveryViewClickListener mListener = new DeliveryAdapter.DeliveryViewClickListener() {
             @Override
             public void onClick(View view, int position) {
-//                        Snackbar snackbar = Snackbar
-//                                .make(swipeContainer, "clicked"+deliveries.get(position).getDescription(), Snackbar.LENGTH_LONG);
-//                        snackbar.show();
                 Intent mapIntent = new Intent(context,MapActivity.class);
                 mapIntent.putExtra("address",totalDeliveries.get(position).getLocation().getAddress());
                 mapIntent.putExtra("latitude",totalDeliveries.get(position).getLocation().getLatitude());
@@ -108,24 +102,28 @@ public class MainActivity extends AppCompatActivity {
                 mapIntent.putExtra("image",totalDeliveries.get(position).getImageUrl());
                 mapIntent.putExtra("description",totalDeliveries.get(position).getDescription());
                 startActivity(mapIntent);
-
             }
         };
 
         deliveryAdapter = new DeliveryAdapter(recyclerView,totalDeliveries, getApplicationContext(),mListener);
         recyclerView.setAdapter(deliveryAdapter);
+        getDeliveries(0, limit);
+
         swipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                if(mutex == 1){
+                if(mutex == 1 ){
                     //Handle - REVISIT - toast
                     return;
                 }
-                getDeliveries(0, 20);
+                refresh = 1;
+                cached = 0;
+                totalDeliveries.clear();
+                deliveryAdapter.notifyDataSetChanged();
+                getDeliveries(0, limit);
             }
 
         });
-        getDeliveries(0, 20);
 
         swipeContainer.setColorSchemeResources(android.R.color.holo_blue_bright,
                 android.R.color.holo_green_light,
@@ -152,22 +150,17 @@ public class MainActivity extends AppCompatActivity {
                     if(mutex == 1 || cached == 1) {
                         return;
                     }
-                    getDeliveries(totalItem, 20);
+                    getDeliveries(totalItem, limit);
                 }
             }
         });
 
     }
 
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//        getDeliveries(0, 20);
-//    }
-
     public void getDeliveries(int offset, int limit) {
         mutex=1;
-        progressBar.setVisibility(View.VISIBLE);
+        if(refresh==0)
+            progressBar.setVisibility(View.VISIBLE);
         if(retrofit == null) {
             retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
@@ -184,21 +177,74 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<List<Delivery>> call, Response<List<Delivery>> response) {
                 if(response.body() == null){
-                    //handle - REVISIT - caching
                     Log.e(TAG, "response is null");
                     progressBar.setVisibility(View.GONE);
-
+                    Gson gson = new Gson();
+                    int itemCount = layoutManager.getItemCount();
+                    if(cached == 0 && itemCount == 0) {
+                        String cachedData = shref.getString(dataKey, "");
+                        List<Delivery> tempDelivery = gson.fromJson(cachedData,
+                                new TypeToken<List<Delivery>>() {
+                                }.getType());
+                        if(tempDelivery != null) {
+                            for (int i = 0; i < tempDelivery.size(); i++) {
+                                totalDeliveries.add(tempDelivery.get(i));
+                                deliveryAdapter.notifyItemInserted(totalDeliveries.size() - 1);
+                            }
+                            deliveryAdapter.notifyDataSetChanged();
+                            cached = 1;
+                        }
+                    }
+                    swipeContainer.setRefreshing(false);
+                    refresh = 0;
+                    if(itemCount > 0 && haveNetworkConnection() == true) {
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_online, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                        mutex=0;
+                        return;
+                    }
+                    else if(itemCount > 0 && haveNetworkConnection() == false) {
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_offline, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                        mutex=0;
+                        return;
+                    }
                     if(layoutManager.getItemCount()==0) {
+                        mutex=0;
                         emptyVIew.setVisibility(View.VISIBLE);
-                        deliveryMessage.setText("No pending items!");
+                        deliveryMessage.setText(R.string.error);
+                        if(haveNetworkConnection() == false){
+                            Snackbar snackbar = Snackbar
+                                    .make(swipeContainer, R.string.error_offline, Snackbar.LENGTH_LONG);
+                            snackbar.show();
+                        }
+                        else {
+                            Snackbar snackbar = Snackbar
+                                    .make(swipeContainer, R.string.error_online, Snackbar.LENGTH_LONG);
+                            snackbar.show();
+                        }
+                        return;
                     }
                     mutex=0;
-                    swipeContainer.setRefreshing(false);
+                    String cachedDate=shref.getString(dateKey , "");
+                    if(!cachedDate.equals("") && layoutManager.getItemCount()!=0) {
+                        if(haveNetworkConnection() == false){
+                            Snackbar snackbar = Snackbar
+                                    .make(swipeContainer, "Network issues. Last synced at " + cachedDate, Snackbar.LENGTH_LONG);
+                            snackbar.show();
+                        }
+                        else {
+                            Snackbar snackbar = Snackbar
+                                    .make(swipeContainer, "Last synced at " + cachedDate, Snackbar.LENGTH_LONG);
+                            snackbar.show();
+                        }
+                    }
+
                     return;
                 }
                 final List<Delivery> deliveries = response.body();
-                System.out.println(deliveries.size());
-                System.out.println(deliveries.size());
                 emptyVIew.setVisibility(View.INVISIBLE);
                 if(cached == 1){
                     cached = 0;
@@ -214,13 +260,29 @@ public class MainActivity extends AppCompatActivity {
                 deliveryAdapter.notifyDataSetChanged();
                 Gson gson = new Gson();
                 String json = gson.toJson(totalDeliveries);
-                editor.remove(dataKey).commit();
+                editor = shref.edit();
+                editor.remove(dataKey).apply();
                 editor.putString(dataKey, json);
-                editor.commit();
-                editor.remove(dateKey).commit();
+                editor.apply();
+                editor.remove(dateKey).apply();
                 editor.putString(dateKey, DateFormat.getDateTimeInstance().format(new Date()));
-                editor.commit();
+                editor.apply();
                 progressBar.setVisibility(View.GONE);
+                if(layoutManager.getItemCount()==0) {
+                    emptyVIew.setVisibility(View.VISIBLE);
+                    deliveryMessage.setText(R.string.pending);
+                    if(haveNetworkConnection() == false){
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_offline, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
+                    else {
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_online, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
+                }
+                refresh = 0;
             }
 
             @Override
@@ -229,37 +291,82 @@ public class MainActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
                 mutex=0;
                 Gson gson = new Gson();
-                if(cached == 0) {
+                int itemCount = layoutManager.getItemCount();
+                if(cached == 0 && itemCount == 0) {
                     String cachedData = shref.getString(dataKey, "");
                     List<Delivery> tempDelivery = gson.fromJson(cachedData,
                             new TypeToken<List<Delivery>>() {
                             }.getType());
-                    for (int i = 0; i < tempDelivery.size(); i++) {
-                        totalDeliveries.add(tempDelivery.get(i));
-                        deliveryAdapter.notifyItemInserted(totalDeliveries.size() - 1);
+                    if(tempDelivery != null) {
+                        for (int i = 0; i < tempDelivery.size(); i++) {
+                            totalDeliveries.add(tempDelivery.get(i));
+                            deliveryAdapter.notifyItemInserted(totalDeliveries.size() - 1);
+                        }
+                        deliveryAdapter.notifyDataSetChanged();
+                        cached = 1;
                     }
-                    deliveryAdapter.notifyDataSetChanged();
-                    cached = 1;
+                }
+
+                swipeContainer.setRefreshing(false);
+                refresh = 0;
+                if(itemCount > 0 && haveNetworkConnection() == true) {
+                    Snackbar snackbar = Snackbar
+                            .make(swipeContainer, R.string.error_online, Snackbar.LENGTH_LONG);
+                    snackbar.show();
+                    return;
+                }
+                else if(itemCount > 0 && haveNetworkConnection() == false) {
+                    Snackbar snackbar = Snackbar
+                            .make(swipeContainer, R.string.error_offline, Snackbar.LENGTH_LONG);
+                    snackbar.show();
+                    return;
                 }
                 if(layoutManager.getItemCount()==0) {
                     emptyVIew.setVisibility(View.VISIBLE);
-                    deliveryMessage.setText("Couldn't fetch the items!");
+                    deliveryMessage.setText(R.string.error);
+                    if(haveNetworkConnection() == false){
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_offline, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
+                    else {
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, R.string.error_online, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
+                    return;
                 }
                 String cachedDate=shref.getString(dateKey , "");
                 if(!cachedDate.equals("")) {
-                    Snackbar snackbar = Snackbar
-                            .make(swipeContainer, "Last Sync on " +cachedDate, Snackbar.LENGTH_LONG);
-                    snackbar.show();
+                    if(haveNetworkConnection() == false){
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, "Network issues. Last synced at " + cachedDate, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
+                    else {
+                        Snackbar snackbar = Snackbar
+                                .make(swipeContainer, "Last synced at " + cachedDate, Snackbar.LENGTH_LONG);
+                        snackbar.show();
+                    }
                 }
-                swipeContainer.setRefreshing(false);
+
             }
         });
     }
+    private boolean haveNetworkConnection() {
+        boolean haveConnectedWifi = false;
+        boolean haveConnectedMobile = false;
 
-    public void refreshDeliveries(View v) {
-        if(mutex == 1)
-            return;
-        getDeliveries(0,20);
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo[] netInfo = cm.getAllNetworkInfo();
+        for (NetworkInfo ni : netInfo) {
+            if (ni.getTypeName().equalsIgnoreCase("WIFI"))
+                if (ni.isConnected())
+                    haveConnectedWifi = true;
+            if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
+                if (ni.isConnected())
+                    haveConnectedMobile = true;
+        }
+        return haveConnectedWifi || haveConnectedMobile;
     }
-
 }

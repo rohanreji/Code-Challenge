@@ -12,7 +12,6 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -66,7 +65,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 .placeholder(android.R.drawable.sym_def_app_icon)
                 .error(android.R.drawable.sym_def_app_icon)
                 .into(deliveryImageMap);
-        deliveryAddressMap.setText(deliveryDescription);
+        deliveryAddressMap.setText(deliveryDescription + " at "+address);
     }
 
     @Override
@@ -75,6 +74,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         final LatLng latlngPoint = new LatLng(lat , lng);
         Marker marker = mMap.addMarker(new MarkerOptions()
                 .position(latlngPoint).title(address));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlngPoint,12.0f));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latlngPoint,15.0f));
     }
 }

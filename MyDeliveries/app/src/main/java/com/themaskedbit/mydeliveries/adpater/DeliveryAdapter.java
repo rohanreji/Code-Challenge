@@ -1,23 +1,17 @@
 package com.themaskedbit.mydeliveries.adpater;
 
 import android.content.Context;
-import android.media.Image;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 import com.themaskedbit.mydeliveries.R;
-import com.themaskedbit.mydeliveries.activity.MainActivity;
 import com.themaskedbit.mydeliveries.model.Delivery;
 
 
@@ -54,7 +48,7 @@ public class DeliveryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     .placeholder(android.R.drawable.sym_def_app_icon)
                     .error(android.R.drawable.sym_def_app_icon)
                     .into(dHolder.deliveryImage);
-            dHolder.deliveryDescription.setText(deliveries.get(position).getDescription());
+            dHolder.deliveryDescription.setText(deliveries.get(position).getDescription() + " at "+deliveries.get(position).getLocation().getAddress());
     }
 
     @Override

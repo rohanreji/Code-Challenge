@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">My Deliveries</string>
-    <string name="title_activity_map">MapActivity</string>
+    <string name="delivery_image_text">delivery image</string>
+    <string name="pending">No items pending!</string>
+    <string name="error">Couldnot fetch the items!</string>
+    <string name="main_activity_label">My Deliveries</string>
+    <string name="refresh_text_string">Pull down to refresh.</string>
+    <string name="error_online">Couldnot fetch more items.</string>
+    <string name="error_offline">Oops! Please check network connection.</string>
+    <string name="sync_offline">Please check network. Last synced on</string>
+    <string name="sync_online">Last Synced on</string>
 </resources>
