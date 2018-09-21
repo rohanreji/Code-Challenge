@@ -176,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<List<Delivery>>() {
             @Override
             public void onResponse(Call<List<Delivery>> call, Response<List<Delivery>> response) {
+
                 if(response.body() == null){
                     Log.e(TAG, "response is null");
                     progressBar.setVisibility(View.GONE);

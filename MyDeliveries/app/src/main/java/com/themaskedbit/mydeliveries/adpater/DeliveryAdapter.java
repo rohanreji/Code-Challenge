@@ -48,7 +48,8 @@ public class DeliveryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     .placeholder(android.R.drawable.sym_def_app_icon)
                     .error(android.R.drawable.sym_def_app_icon)
                     .into(dHolder.deliveryImage);
-            dHolder.deliveryDescription.setText(deliveries.get(position).getDescription() + " at "+deliveries.get(position).getLocation().getAddress());
+            String message = deliveries.get(position).getDescription() + R.string.at_string +deliveries.get(position).getLocation().getAddress();
+            dHolder.deliveryDescription.setText(message);
     }
 
     @Override

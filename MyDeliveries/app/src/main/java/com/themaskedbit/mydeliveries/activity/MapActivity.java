@@ -65,7 +65,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 .placeholder(android.R.drawable.sym_def_app_icon)
                 .error(android.R.drawable.sym_def_app_icon)
                 .into(deliveryImageMap);
-        deliveryAddressMap.setText(deliveryDescription + " at "+address);
+        String message = deliveryDescription + R.string.at_string +address;
+        deliveryAddressMap.setText(message);
     }
 
     @Override
